@@ -1,7 +1,7 @@
 # UniBioMap Demo
 
 📊This repository demonstrates sampling subgraphs from UniBioMap based on specific entities (sets) and visualizing them.
-
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/13hGU_iLFzvV23myds-FtHdMBrzjiLdtJ?usp=drive_link)
 
 ## Installation
 
