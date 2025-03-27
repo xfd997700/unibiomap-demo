@@ -97,12 +97,15 @@ def run_query(protein, compound, disease, pathway, go, depth,
     must_show = sample_dict.copy()
     remove_self_loop = True
     try:
+        print('start sampling')
         sub_g, new2orig, node_map_sub = subgraph_by_node(graph, sample_dict, node_map, depth=depth)
         id_map_sub = nodemap2idmap(node_map_sub)
+        print('start report')
         report_subgraph(sub_g, id_map_sub, save_root=results_root)
-
+        print('start convert')
         G = convert_subgraph_to_networkx(sub_g, id_map_sub, display_limits, must_show, remove_self_loop)
         echarts_data = nx_to_echarts_json(G, color_map)
+        print('start generate')
         html_code = generate_echarts_html(echarts_data)
         # Encode to base64
         html_base64 = base64.b64encode(html_code.encode('utf-8')).decode('utf-8')
