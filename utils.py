@@ -6,7 +6,6 @@ from tqdm import tqdm
 import os
 import networkx as nx
 import gdown
-from pyvis.network import Network
 import matplotlib.pyplot as plt
 
 file_id = "1tUe3YVyA2K2Xh_GORWYaOGEKyYE5vnAp"
