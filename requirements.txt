@@ -1,7 +1,13 @@
-dgl
-torch==2.4.0+cu124
 gdown==5.2.0
 matplotlib==3.10.1
 networkx==3.2.1
 pyvis==0.3.2
 tqdm==4.67.1
+
+--index-url https://download.pytorch.org/whl/cpu
+torch==2.4.0+cpu
+torchvision==0.19.0+cpu
+torchaudio==2.4.0+cpu
+
+dgl
+--find-links https://data.dgl.ai/wheels/torch-2.4/repo.html
