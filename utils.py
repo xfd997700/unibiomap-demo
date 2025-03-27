@@ -252,3 +252,108 @@ def convert_subgraph_to_networkx(sub_g, id_map,
         G.remove_edges_from(nx.selfloop_edges(G))
 
     return G
+
+# === Generate HTML with ECharts ===
+def generate_echarts_html(echarts_data):
+    data = json.loads(echarts_data)
+    return f"""
+    <div id=\"main\" style=\"width:100%;height:800px;\"></div>
+    <script src=\"https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js\"></script>
+    <script>
+        var chartDom = document.getElementById('main');
+        var myChart = echarts.init(chartDom);
+        var option = {{
+            tooltip: {{}},
+            legend: [{{
+                data: {json.dumps([cat['name'] for cat in data['categories']])},
+
+            }}],
+            series: [{{
+                type: 'graph',
+                layout: 'force',
+                roam: true,
+                label: {{ show: true, position: 'right' }},
+                edgeSymbol: ['none', 'none'],
+                data: {json.dumps(data['nodes'])},
+                links: {json.dumps(data['links'])},
+                categories: {json.dumps(data['categories'])},
+                force: {{
+                    repulsion: 300,
+                    edgeLength: 120
+                }},
+                emphasis: {{
+                    focus: 'adjacency',
+                    label: {{ show: true }}
+                }}
+            }}]
+        }};
+        myChart.setOption(option);
+
+        myChart.on('click', function (params) {{
+            if (params.data && params.data.url) {{
+                window.open(params.data.url, '_blank');
+            }}
+        }});
+        // ✅ 添加响应式图表大小
+        window.addEventListener('resize', function () {{
+            myChart.resize();
+            myChart.setOption(option);  // 强制触发重新布局
+        }});
+    </script>
+    """
+def get_url_by_id(id, group):
+    base_url = "https://identifiers.org/"
+    if group == "protein":
+        id = 'uniprot:' + id
+    if group == "compound":
+        id = id.split(":")[-1]
+        return f"https://www.ebi.ac.uk/unichem/compoundsources?type=uci&compound={id}"
+    if group == "disease":
+        id = 'mesh:' + id
+    if id.startswith("R-HSA"):
+        id = 'reactome:' + id
+    if id.startswith("hsa"):
+        return f"https://www.kegg.jp/pathway/{id}"
+    if id.startswith("SMP"):
+        id = 'smpdb:' + id
+    url = base_url + id
+    return url
+
+# === Convert NX Graph to ECharts JSON ===
+def nx_to_echarts_json(G, color_map, base_size=12, max_ratio=2.5):
+    nodes = []
+    links = []
+
+    degrees = dict(G.degree())
+    min_deg = min(degrees.values()) or 1
+    max_deg = max(degrees.values())
+
+    def scale(deg):
+        if max_deg == min_deg:
+            return base_size
+        norm = (deg - min_deg) / (max_deg - min_deg)
+        return base_size + norm * base_size * (max_ratio - 1)
+    
+    for node in G.nodes(data=True):
+        label = node[1].get("label", node[0])
+        id = node[0]
+        deg = degrees[node[0]]
+        group = node[1].get("group", "other")
+        url = get_url_by_id(label, group) if group!='other' else None
+        nodes.append({
+            "name": label,
+            "value": id,
+            "category": group,
+            "symbolSize": scale(deg),
+            "url": url
+        })
+    for edge in G.edges():
+        source_label = G.nodes[edge[0]].get("label", edge[0])
+        target_label = G.nodes[edge[1]].get("label", edge[1])
+        links.append({
+            "source": source_label,
+            "target": target_label
+        })
+    categories = [{"name": cat, "itemStyle": {"color": color_map.get(cat, '#ccc')}} for cat in color_map]
+    return json.dumps({"nodes": nodes, "links": links, "categories": categories}, ensure_ascii=False)
+
