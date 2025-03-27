@@ -170,7 +170,7 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1):
     return full_g, new2orig, new_node_map
 
 
-def report_subgraph(graph, id_map, save_root=None):
+def report_subgraph(graph, id_map, save_root='static'):
     entities = defaultdict(list)
     for ntype in graph.ntypes:
         for nid in graph.nodes(ntype).tolist():
@@ -193,7 +193,7 @@ def report_subgraph(graph, id_map, save_root=None):
         os.makedirs(save_root, exist_ok=True)
         with open(os.path.join(save_root, "entities.json"), "w") as f:
             json.dump(entities, f)
-        with open(os.path.join(save_root, "triplets.txt"), "w") as f:
+        with open(os.path.join(save_root, "triples.txt"), "w") as f:
             for triplet in triplets:
                 f.write(f"{triplet[0]}\t{triplet[1]}\t{triplet[2]}\n")
     return entities, triplets
@@ -298,6 +298,7 @@ def generate_echarts_html(echarts_data):
             myChart.resize();
             myChart.setOption(option);  // 强制触发重新布局
         }});
+        
     </script>
     """
 def get_url_by_id(id, group):

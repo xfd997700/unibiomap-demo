@@ -23,6 +23,7 @@ node_size = 500
 font_size = 10
 font_color = "black"
 edge_color = "gray"
+results_root = "results/"
 
 # === Step 1: Load or Process Graph ===
 def load_or_process_graph():
@@ -98,9 +99,9 @@ def run_query(protein, compound, disease, pathway, go, depth,
     try:
         sub_g, new2orig, node_map_sub = subgraph_by_node(graph, sample_dict, node_map, depth=depth)
         id_map_sub = nodemap2idmap(node_map_sub)
+        report_subgraph(sub_g, id_map_sub, save_root=results_root)
 
         G = convert_subgraph_to_networkx(sub_g, id_map_sub, display_limits, must_show, remove_self_loop)
-
         echarts_data = nx_to_echarts_json(G, color_map)
         html_code = generate_echarts_html(echarts_data)
         # Encode to base64
@@ -119,20 +120,36 @@ def get_default_content():
       iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
       return iframe_html
 
-def get_md_content(file_path = "static/gr_head.md"):
+def get_text_content(file_path = "static/gr_head.md"):
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
-    
+
+def download_entity():
+    path = os.path.join(results_root, 'triples.txt')
+    return gr.update(value=path, visible=True)
+
+
+
 with gr.Blocks() as demo:
-    gr.Markdown(get_md_content())
-    gr.Markdown("Enter node IDs below to explore their local subgraph.")
+    gr.HTML(get_text_content("static/gr_head.html"))
+    gr.Markdown(get_text_content())
 
     html_output = gr.HTML(value=get_default_content())
 
-    run_btn = gr.Button("▶ Run Query")
+    with gr.Row():
+        with gr.Column():
+            run_btn = gr.Button("▶ Run Query")
+        with gr.Row():
+            with gr.Column():
+                down_btn = gr.Button("⬇️ Get All Queried Entities")
+            with gr.Column():
+                download_file = gr.File(label="Query triples file",
+                                        interactive=False, visible=False)
+
     with gr.Row():
         with gr.Column():
             gr.Markdown("### Query Content")
+            gr.Markdown("You can enter multiple entity IDs to query, separated by commas, for example: P50416, P05091.")
             protein_input = gr.Textbox("P05091", label="Protein ID")
             compound_input = gr.Textbox(label="Compound ID")
             disease_input = gr.Textbox(label="Disease ID")
@@ -142,7 +159,8 @@ with gr.Blocks() as demo:
             inputs_1=[protein_input, compound_input, disease_input, pathway_input, go_input]
         
         with gr.Column():
-            gr.Markdown("### Display Limit")
+            gr.Markdown("### Sample Limit")
+            gr.Markdown("Setup the sampling restriction parameters below.")
             depth_slider = gr.Slider(0, 4, step=1, label="Subgraph Sampling Depth", value=1)
             with gr.Accordion("Display Limit", open=False):
                 def slider_with_inf(label):
@@ -169,9 +187,10 @@ with gr.Blocks() as demo:
                             pathway_limit, pathway_inf,
                             phenotype_limit, phenotype_inf,
                             protein_limit, protein_inf]
-              
+    
     msg = gr.Textbox("OUTPUT INFO", label="INFO")
     debug = gr.Textbox("DEBUG", label="debug")
+
 
     inputs = inputs_1 + inputs_2
     run_btn.click(
@@ -180,4 +199,9 @@ with gr.Blocks() as demo:
         outputs=[html_output, msg, debug]
     )
 
+
+    down_btn.click(
+        fn=download_entity,
+        outputs=[download_file]
+    )
     demo.launch()
