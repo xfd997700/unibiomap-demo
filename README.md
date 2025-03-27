@@ -1,3 +1,17 @@
+---
+title: Okk
+emoji: 📊
+colorFrom: blue
+colorTo: pink
+sdk: gradio
+sdk_version: 5.23.1
+app_file: app.py
+pinned: false
+---
+
+
+
+
 # UniBioMap Demo
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/xfd997700/unibiomap-demo/blob/main/demo.ipynb)
 [![Open In GitHub](https://img.shields.io/badge/Open%20in-GitHub-black?logo=github)](https://github.com/xfd997700/unibiomap_demo)
