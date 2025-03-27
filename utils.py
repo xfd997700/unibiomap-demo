@@ -255,52 +255,54 @@ def convert_subgraph_to_networkx(sub_g, id_map,
 # === Generate HTML with ECharts ===
 def generate_echarts_html(echarts_data):
     data = json.loads(echarts_data)
-    return f"""
-    <div id=\"main\" style=\"width:100%;height:800px;\"></div>
-    <script src=\"https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js\"></script>
+    html_code = f"""
+    <div style="width: 100%; max-width: 1000px; margin: auto;">
+        <div id="main" style="width: 100%; height: 600px;"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script>
-        var chartDom = document.getElementById('main');
-        var myChart = echarts.init(chartDom);
-        var option = {{
-            tooltip: {{}},
-            legend: [{{
-                data: {json.dumps([cat['name'] for cat in data['categories']])},
+        function initECharts() {{
+            const chartDom = document.getElementById('main');
+            const myChart = echarts.init(chartDom);
+            const option = {{
+                tooltip: {{}},
+                legend: [{{
+                    data: {json.dumps([cat['name'] for cat in data['categories']])}
+                }}],
+                series: [{{
+                    type: 'graph',
+                    layout: 'force',
+                    roam: true,
+                    label: {{ show: true, position: 'right' }},
+                    edgeSymbol: ['none', 'none'],
+                    data: {json.dumps(data['nodes'])},
+                    links: {json.dumps(data['links'])},
+                    categories: {json.dumps(data['categories'])},
+                    force: {{
+                        repulsion: 300,
+                        edgeLength: 100
+                    }},
+                    emphasis: {{
+                        focus: 'adjacency',
+                        label: {{ show: true }}
+                    }}
+                }}]
+            }};
+            myChart.setOption(option);
 
-            }}],
-            series: [{{
-                type: 'graph',
-                layout: 'force',
-                roam: true,
-                label: {{ show: true, position: 'right' }},
-                edgeSymbol: ['none', 'none'],
-                data: {json.dumps(data['nodes'])},
-                links: {json.dumps(data['links'])},
-                categories: {json.dumps(data['categories'])},
-                force: {{
-                    repulsion: 300,
-                    edgeLength: 120
-                }},
-                emphasis: {{
-                    focus: 'adjacency',
-                    label: {{ show: true }}
-                }}
-            }}]
-        }};
-        myChart.setOption(option);
+            // ResizeObserver 监听容器变化
+            const resizeObserver = new ResizeObserver(() => {{
+                myChart.resize();
+            }});
+            resizeObserver.observe(chartDom);
+        }}
 
-        myChart.on('click', function (params) {{
-            if (params.data && params.data.url) {{
-                window.open(params.data.url, '_blank');
-            }}
-        }});
-        // ✅ 添加响应式图表大小
-        window.addEventListener('resize', function () {{
-            myChart.resize();
-            myChart.setOption(option);  // 强制触发重新布局
-        }});
-        
+        // 初始化延迟执行，确保 DOM 加载完成
+        setTimeout(initECharts, 100);
     </script>
     """
+    return html_code
+
 def get_url_by_id(id, group):
     base_url = "https://identifiers.org/"
     if group == "protein":
