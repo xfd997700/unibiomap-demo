@@ -257,7 +257,7 @@ def generate_echarts_html(echarts_data):
     data = json.loads(echarts_data)
     html_code = f"""
     <div style="width: 100%; max-width: 1000px; margin: auto;">
-        <div id="main" style="width: 100%; height: 600px;"></div>
+        <div id="main" style="width: 100%; height: 820px;"></div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script>
