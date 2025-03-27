@@ -1,8 +1,8 @@
-dgl==2.4.0+cu124
+dgl
+torch==2.4.0+cu124
 gdown==5.2.0
 matplotlib==3.10.1
 networkx==3.2.1
 pyvis==0.3.2
-torch==2.4.0+cu124
 tqdm==4.67.1
 torchdata==0.9.0
