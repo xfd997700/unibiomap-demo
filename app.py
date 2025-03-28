@@ -25,7 +25,6 @@ font_color = "black"
 edge_color = "gray"
 results_root = "results/"
 
-# === Step 1: Load or Process Graph ===
 def load_or_process_graph():
     link_root = "database/unibiomap"
     data_root = "database/processed"
@@ -54,44 +53,40 @@ def load_or_process_graph():
 
 graph, node_map, id_map = load_or_process_graph()
 
-
 def fetch_input_id(input_string):
     if not input_string:
         return []
     return [item.strip() for item in input_string.split(",")]
 
-def get_limit(limit, inf):
-    if inf:
-        return -1
-    return limit
+def get_limit(mode, limit_val):
+    return -1 if mode == "No Limit" else limit_val
 
-# === Step 4: Main Gradio Function ===
 def run_query(protein, compound, disease, pathway, go, depth,
-              complex_limit, complex_inf,
-            compound_limit, compound_inf,
-            disease_limit, disease_inf,
-            genetic_limit, genetic_inf,
-            go_limit, go_inf,
-            pathway_limit, pathway_inf,
-            phenotype_limit, phenotype_inf,
-            protein_limit, protein_inf):
-    
+              complex_mode, complex_limit,
+              compound_mode, compound_limit,
+              disease_mode, disease_limit,
+              genetic_mode, genetic_limit,
+              go_mode, go_limit,
+              pathway_mode, pathway_limit,
+              phenotype_mode, phenotype_limit,
+              protein_mode, protein_limit):
+
     sample_dict = {
         "protein": fetch_input_id(protein),
         "compound": fetch_input_id(compound),
         "disease": fetch_input_id(disease),
         "pathway": fetch_input_id(pathway),
         "go": fetch_input_id(go)
-        }
+    }
     display_limits = {
-    'complex': get_limit(complex_limit, complex_inf),
-    'compound': get_limit(compound_limit, compound_inf),
-    'disease': get_limit(disease_limit, disease_inf),
-    'genetic_disorder': get_limit(genetic_limit, genetic_inf),
-    'go': get_limit(go_limit, go_inf),
-    'pathway': get_limit(pathway_limit, pathway_inf),
-    'phenotype': get_limit(phenotype_limit, phenotype_inf),
-    'protein': get_limit(protein_limit, protein_inf),
+        'complex': get_limit(complex_mode, complex_limit),
+        'compound': get_limit(compound_mode, compound_limit),
+        'disease': get_limit(disease_mode, disease_limit),
+        'genetic_disorder': get_limit(genetic_mode, genetic_limit),
+        'go': get_limit(go_mode, go_limit),
+        'pathway': get_limit(pathway_mode, pathway_limit),
+        'phenotype': get_limit(phenotype_mode, phenotype_limit),
+        'protein': get_limit(protein_mode, protein_limit),
     }
 
     must_show = sample_dict.copy()
@@ -107,31 +102,28 @@ def run_query(protein, compound, disease, pathway, go, depth,
         echarts_data = nx_to_echarts_json(G, color_map)
         print('start generate')
         html_code = generate_echarts_html(echarts_data)
-        # Encode to base64
         html_base64 = base64.b64encode(html_code.encode('utf-8')).decode('utf-8')
         data_uri = f"data:text/html;base64,{html_base64}"
         iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
         return iframe_html, 'success', html_code
     except Exception as e:
-        return f"Error: {str(e)}", f"Error: {str(e)}", sample_dict, html_code
+        return f"Error: {str(e)}", f"Error: {str(e)}", sample_dict, ""
 
 def get_default_content():
     with open("static/default.html", "r", encoding="utf-8") as f:
-      default_html = f.read()
-      html_base64 = base64.b64encode(default_html.encode('utf-8')).decode('utf-8')
-      data_uri = f"data:text/html;base64,{html_base64}"
-      iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
-      return iframe_html
+        default_html = f.read()
+        html_base64 = base64.b64encode(default_html.encode('utf-8')).decode('utf-8')
+        data_uri = f"data:text/html;base64,{html_base64}"
+        iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
+        return iframe_html
 
-def get_text_content(file_path = "static/gr_head.md"):
+def get_text_content(file_path="static/gr_head.md"):
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
 
 def download_entity():
     path = os.path.join(results_root, 'triples.txt')
     return gr.update(value=path, visible=True)
-
-
 
 with gr.Blocks() as demo:
     gr.HTML(get_text_content("static/gr_head.html"))
@@ -146,8 +138,7 @@ with gr.Blocks() as demo:
             with gr.Column():
                 down_btn = gr.Button("⬇️ Get All Queried Entities")
             with gr.Column():
-                download_file = gr.File(label="Query triples file",
-                                        interactive=False, visible=False)
+                download_file = gr.File(label="Query triples file", interactive=False, visible=False)
 
     with gr.Row():
         with gr.Column():
@@ -158,42 +149,47 @@ with gr.Blocks() as demo:
             disease_input = gr.Textbox(label="Disease ID")
             pathway_input = gr.Textbox(label="Pathway ID")
             go_input = gr.Textbox(label="GO ID")
-            
-            inputs_1=[protein_input, compound_input, disease_input, pathway_input, go_input]
-        
+
+            inputs_1 = [protein_input, compound_input, disease_input, pathway_input, go_input]
+
         with gr.Column():
             gr.Markdown("### Sample Limit")
             gr.Markdown("Setup the sampling restriction parameters below.")
             depth_slider = gr.Slider(0, 4, step=1, label="Subgraph Sampling Depth", value=1)
-            with gr.Accordion("Display Limit", open=False):
-                def slider_with_inf(label):
-                    with gr.Row():
-                        slider = gr.Slider(1, 20, step=1, value=10, label=label)
-                        checkbox = gr.Checkbox(label="Inf", value=False)
-                    return slider, checkbox
 
-                complex_limit, complex_inf = slider_with_inf("Complex")
-                compound_limit, compound_inf = slider_with_inf("Compound")
-                disease_limit, disease_inf = slider_with_inf("Disease")
-                genetic_limit, genetic_inf = slider_with_inf("Genetic Disorder")
-                go_limit, go_inf = slider_with_inf("GO")
-                pathway_limit, pathway_inf = slider_with_inf("Pathway")
-                phenotype_limit, phenotype_inf = slider_with_inf("Phenotype")
-                protein_limit, protein_inf = slider_with_inf("Protein")
+            with gr.Accordion("Display Limit", open=False):
+                def slider_with_mode(label):
+                    with gr.Row():
+                        mode = gr.Radio(["Set Limit", "No Limit"], value="Set Limit", label=f"{label} Mode", interactive=True)
+                        slider = gr.Slider(1, 20, step=1, value=10, label=label, visible=True)
+
+                        def toggle_slider(mode_val):
+                            return gr.update(visible=(mode_val == "Set Limit"))
+
+                        mode.change(fn=toggle_slider, inputs=mode, outputs=slider)
+                    return mode, slider
+
+                complex_mode, complex_limit = slider_with_mode("Complex")
+                compound_mode, compound_limit = slider_with_mode("Compound")
+                disease_mode, disease_limit = slider_with_mode("Disease")
+                genetic_mode, genetic_limit = slider_with_mode("Genetic Disorder")
+                go_mode, go_limit = slider_with_mode("GO")
+                pathway_mode, pathway_limit = slider_with_mode("Pathway")
+                phenotype_mode, phenotype_limit = slider_with_mode("Phenotype")
+                protein_mode, protein_limit = slider_with_mode("Protein")
 
                 inputs_2 = [depth_slider,
-                            complex_limit, complex_inf,
-                            compound_limit, compound_inf,
-                            disease_limit, disease_inf,
-                            genetic_limit, genetic_inf,
-                            go_limit, go_inf,
-                            pathway_limit, pathway_inf,
-                            phenotype_limit, phenotype_inf,
-                            protein_limit, protein_inf]
-    
+                            complex_mode, complex_limit,
+                            compound_mode, compound_limit,
+                            disease_mode, disease_limit,
+                            genetic_mode, genetic_limit,
+                            go_mode, go_limit,
+                            pathway_mode, pathway_limit,
+                            phenotype_mode, phenotype_limit,
+                            protein_mode, protein_limit]
+
     msg = gr.Textbox("OUTPUT INFO", label="INFO")
     debug = gr.Textbox("DEBUG", label="debug")
-
 
     inputs = inputs_1 + inputs_2
     run_btn.click(
@@ -202,9 +198,9 @@ with gr.Blocks() as demo:
         outputs=[html_output, msg, debug]
     )
 
-
     down_btn.click(
         fn=download_entity,
         outputs=[download_file]
     )
+
     demo.launch()
