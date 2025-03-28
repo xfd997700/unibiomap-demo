@@ -156,7 +156,17 @@ def refresh_display(sub_g, id_map_sub, must_show,
         return f"Error updating display: {str(e)}"
 
 # 删除 get_default_content 函数，不再需要
-
+def get_default_content(take_empty=True):
+    if take_empty:
+        with open("static/gr_empty.html", "r", encoding="utf-8") as f:
+            return f.read()
+    with open("static/default.html", "r", encoding="utf-8") as f:
+        default_html = f.read()
+        html_base64 = base64.b64encode(default_html.encode('utf-8')).decode('utf-8')
+        data_uri = f"data:text/html;base64,{html_base64}"
+        iframe_html = f"<iframe src='{data_uri}' width='100%' height='600px' style='border:none;'></iframe>"
+        return iframe_html
+    
 def get_text_content(file_path="static/gr_head.md"):
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
@@ -222,7 +232,7 @@ with gr.Blocks() as demo:
     gr.Markdown(get_text_content())
 
     # 使用预加载的展示内容作为初始值
-    html_output = gr.HTML(value=empty_display)
+    html_output = gr.HTML(value=get_default_content(get_empty=True))
     # 如果有预加载数据，则设置初始状态，否则为空
     subgraph_state = gr.State(value=sub_g_static)
     idmap_state = gr.State(value=id_map_sub_static)
