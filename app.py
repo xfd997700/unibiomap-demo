@@ -9,6 +9,8 @@ from utils import *
 from os.path import join
 import base64
 
+# TODO:尝试打开项目直接启动一次检索，避免加载静态
+
 color_map = {
     'complex': '#FFA07A',
     'compound': '#98FB98',
