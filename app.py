@@ -94,9 +94,7 @@ def run_query(protein, compound, disease, pathway, go, depth,
     try:
         print('start sampling')
         sub_g, new2orig, node_map_sub = subgraph_by_node(graph, sample_dict, node_map, depth=depth)
-        id_map_sub = nodemap2idmap(node_map_sub)
-        print('start report')
-        report_subgraph(sub_g, id_map_sub, save_root=results_root)
+        id_map_sub = {k: {vv: kk for kk, vv in v.items()} for k, v in node_map_sub.items()}
         print('start convert')
         G = convert_subgraph_to_networkx(sub_g, id_map_sub, display_limits, must_show, remove_self_loop)
         echarts_data = nx_to_echarts_json(G, color_map)
@@ -105,9 +103,9 @@ def run_query(protein, compound, disease, pathway, go, depth,
         html_base64 = base64.b64encode(html_code.encode('utf-8')).decode('utf-8')
         data_uri = f"data:text/html;base64,{html_base64}"
         iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
-        return iframe_html, 'success', html_code
+        return iframe_html, 'success', html_code, sub_g, id_map_sub
     except Exception as e:
-        return f"Error: {str(e)}", f"Error: {str(e)}", sample_dict, ""
+        return f"Error: {str(e)}", f"Error: {str(e)}", sample_dict, None, None
 
 def get_default_content():
     with open("static/default.html", "r", encoding="utf-8") as f:
@@ -121,15 +119,21 @@ def get_text_content(file_path="static/gr_head.md"):
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
 
-def download_entity():
-    path = os.path.join(results_root, 'triples.txt')
-    return gr.update(value=path, visible=True)
+def download_entity(sub_g, id_map_sub):
+    try:
+        report_subgraph(sub_g, id_map_sub, save_root=results_root)
+        path = os.path.join(results_root, 'triples.txt')
+        return gr.update(value=path, visible=True)
+    except Exception as e:
+        return gr.update(value=f"Error: {e}", visible=True)
 
 with gr.Blocks() as demo:
     gr.HTML(get_text_content("static/gr_head.html"))
     gr.Markdown(get_text_content())
 
     html_output = gr.HTML(value=get_default_content())
+    subgraph_state = gr.State()
+    idmap_state = gr.State()
 
     with gr.Row():
         with gr.Column():
@@ -195,11 +199,12 @@ with gr.Blocks() as demo:
     run_btn.click(
         fn=run_query,
         inputs=inputs,
-        outputs=[html_output, msg, debug]
+        outputs=[html_output, msg, debug, subgraph_state, idmap_state]
     )
 
     down_btn.click(
         fn=download_entity,
+        inputs=[subgraph_state, idmap_state],
         outputs=[download_file]
     )
 
