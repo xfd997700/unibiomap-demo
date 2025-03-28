@@ -117,7 +117,6 @@ def run_query(protein, compound, disease, pathway, go, depth,
         id_map_sub = {k: {vv: kk for kk, vv in v.items()} for k, v in node_map_sub.items()}
         # 储存subgraph
         # save_subgraph_and_metadata(sub_g, id_map_sub, must_show)
-
         # 调用公共函数生成展示 HTML
         iframe_html, html_code = generate_iframe(sub_g, id_map_sub, must_show, display_limits)
 

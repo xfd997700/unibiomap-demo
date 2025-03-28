@@ -26,7 +26,10 @@ pinned: false
     ```bash
     python app.py
     ```
-
+    or if you want further modification:
+    ```bash
+    gradio app.py
+    ```
 - If you just want to compile the networkx graph image and entity .txt file, Simply following the steps in `demo.ipynb`. Or you can run the demo on [Google Colab]((https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/xfd997700/unibiomap-demo/blob/main/demo.ipynb)).
 
 ## Requirements
@@ -39,6 +42,7 @@ pinned: false
 
 2. Install the required packages:
     ```bash
+    pip install --upgrade gradio
     pip install -r requirements.txt
     ```
 
