@@ -185,10 +185,22 @@ def load_static_files():
         return sub_g, id_map_sub, must_show
     return None, None, None
 
+def get_default_content(get_empty=True):
+    if get_empty:
+        with open("static/gr_empty.html", "r", encoding="utf-8") as f:
+            return f.read()
+    
+    with open("static/default.html", "r", encoding="utf-8") as f:
+        default_html = f.read()
+        html_base64 = base64.b64encode(default_html.encode('utf-8')).decode('utf-8')
+        data_uri = f"data:text/html;base64,{html_base64}"
+        iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
+        return iframe_html
 
 # 尝试加载预存数据
 sub_g_static, id_map_sub_static, must_show_static = load_static_files()
 
+empty_display = get_default_content()
 # 如果加载成功，则使用默认的 slider 默认值来生成初始展示内容
 if sub_g_static is not None:
     initial_display = refresh_display(
@@ -203,14 +215,14 @@ if sub_g_static is not None:
         "Set Limit", 10   # protein
     )
 else:
-    initial_display = "<b>No preloaded data available.</b>"
+    initial_display = "<b>Press Run Query button to start exploring!</b>"
 
 with gr.Blocks() as demo:
     gr.HTML(get_text_content("static/gr_head.html"))
     gr.Markdown(get_text_content())
 
     # 使用预加载的展示内容作为初始值
-    html_output = gr.HTML(value=initial_display)
+    html_output = gr.HTML(value=empty_display)
     # 如果有预加载数据，则设置初始状态，否则为空
     subgraph_state = gr.State(value=sub_g_static)
     idmap_state = gr.State(value=id_map_sub_static)
