@@ -22,7 +22,6 @@ color_map = {
 node_size = 500
 font_size = 10
 font_color = "black"
-edge_color = "gray"
 results_root = "results/"
 
 def load_or_process_graph():
@@ -61,6 +60,28 @@ def fetch_input_id(input_string):
 def get_limit(mode, limit_val):
     return -1 if mode == "No Limit" else limit_val
 
+def save_subgraph_and_metadata(sub_g, id_map_sub, must_show, save_dir="static"):
+    os.makedirs(save_dir, exist_ok=True)
+    # 保存 DGL 子图
+    dgl.save_graphs(os.path.join(save_dir, "subgraph.dgl"), [sub_g])
+    # 保存 id_map_sub
+    with open(os.path.join(save_dir, "id_map_sub.json"), "w", encoding="utf-8") as f:
+        json.dump(id_map_sub, f)
+    # 保存 must_show
+    with open(os.path.join(save_dir, "must_show.json"), "w", encoding="utf-8") as f:
+        json.dump(must_show, f)
+
+# 新增：公共函数，用于根据子图和限制条件生成 iframe HTML 以及生成的 html_code
+def generate_iframe(sub_g, id_map_sub, must_show, display_limits):
+    remove_self_loop = True
+    G = convert_subgraph_to_networkx(sub_g, id_map_sub, display_limits, must_show, remove_self_loop)
+    echarts_data = nx_to_echarts_json(G, color_map)
+    html_code = generate_echarts_html(echarts_data)
+    html_base64 = base64.b64encode(html_code.encode('utf-8')).decode('utf-8')
+    data_uri = f"data:text/html;base64,{html_base64}"
+    iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
+    return iframe_html, html_code
+
 def run_query(protein, compound, disease, pathway, go, depth,
               complex_mode, complex_limit,
               compound_mode, compound_limit,
@@ -70,7 +91,7 @@ def run_query(protein, compound, disease, pathway, go, depth,
               pathway_mode, pathway_limit,
               phenotype_mode, phenotype_limit,
               protein_mode, protein_limit):
-
+    # 构造查询字典和显示限制
     sample_dict = {
         "protein": fetch_input_id(protein),
         "compound": fetch_input_id(compound),
@@ -90,30 +111,50 @@ def run_query(protein, compound, disease, pathway, go, depth,
     }
 
     must_show = sample_dict.copy()
-    remove_self_loop = True
     try:
         print('start sampling')
         sub_g, new2orig, node_map_sub = subgraph_by_node(graph, sample_dict, node_map, depth=depth)
         id_map_sub = {k: {vv: kk for kk, vv in v.items()} for k, v in node_map_sub.items()}
-        print('start convert')
-        G = convert_subgraph_to_networkx(sub_g, id_map_sub, display_limits, must_show, remove_self_loop)
-        echarts_data = nx_to_echarts_json(G, color_map)
-        print('start generate')
-        html_code = generate_echarts_html(echarts_data)
-        html_base64 = base64.b64encode(html_code.encode('utf-8')).decode('utf-8')
-        data_uri = f"data:text/html;base64,{html_base64}"
-        iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
-        return iframe_html, 'success', html_code, sub_g, id_map_sub
-    except Exception as e:
-        return f"Error: {str(e)}", f"Error: {str(e)}", sample_dict, None, None
+        # 储存subgraph
+        # save_subgraph_and_metadata(sub_g, id_map_sub, must_show)
 
-def get_default_content():
-    with open("static/default.html", "r", encoding="utf-8") as f:
-        default_html = f.read()
-        html_base64 = base64.b64encode(default_html.encode('utf-8')).decode('utf-8')
-        data_uri = f"data:text/html;base64,{html_base64}"
-        iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
+        # 调用公共函数生成展示 HTML
+        iframe_html, html_code = generate_iframe(sub_g, id_map_sub, must_show, display_limits)
+
+        return iframe_html, 'success', html_code, sub_g, id_map_sub, must_show
+    except Exception as e:
+        return f"Error: {str(e)}", f"Error: {str(e)}", sample_dict, None, None, None
+
+def refresh_display(sub_g, id_map_sub, must_show,
+                    complex_mode, complex_limit,
+                    compound_mode, compound_limit,
+                    disease_mode, disease_limit,
+                    genetic_mode, genetic_limit,
+                    go_mode, go_limit,
+                    pathway_mode, pathway_limit,
+                    phenotype_mode, phenotype_limit,
+                    protein_mode, protein_limit):
+    # 检查状态数据
+    if sub_g is None or id_map_sub is None or must_show is None:
+        return gr.update(value="<b>Please run query first.</b>")
+
+    display_limits = {
+        'complex': get_limit(complex_mode, complex_limit),
+        'compound': get_limit(compound_mode, compound_limit),
+        'disease': get_limit(disease_mode, disease_limit),
+        'genetic_disorder': get_limit(genetic_mode, genetic_limit),
+        'go': get_limit(go_mode, go_limit),
+        'pathway': get_limit(pathway_mode, pathway_limit),
+        'phenotype': get_limit(phenotype_mode, phenotype_limit),
+        'protein': get_limit(protein_mode, protein_limit),
+    }
+    try:
+        iframe_html, _ = generate_iframe(sub_g, id_map_sub, must_show, display_limits)
         return iframe_html
+    except Exception as e:
+        return f"Error updating display: {str(e)}"
+
+# 删除 get_default_content 函数，不再需要
 
 def get_text_content(file_path="static/gr_head.md"):
     with open(file_path, "r", encoding="utf-8") as f:
@@ -127,13 +168,52 @@ def download_entity(sub_g, id_map_sub):
     except Exception as e:
         return gr.update(value=f"Error: {e}", visible=True)
 
+# 新增：加载静态文件的函数，如果存在则加载保存的子图数据
+def load_static_files():
+    subgraph_file = "static/subgraph.dgl"
+    must_show_file = "static/must_show.json"
+    id_map_sub_file = "static/id_map_sub.json"
+    if os.path.exists(subgraph_file) and os.path.exists(must_show_file) and os.path.exists(id_map_sub_file):
+        sub_g = dgl.load_graphs(subgraph_file)[0][0]
+        with open(must_show_file, "r", encoding="utf-8") as f:
+            must_show = json.load(f)
+        with open(id_map_sub_file, "r", encoding="utf-8") as f:
+            id_map_sub = json.load(f)
+        # 将 id_map_sub 中的键转换为整数
+        id_map_sub = {ntype: {int(k): v for k, v in mapping.items()} for ntype, mapping in id_map_sub.items()}
+        return sub_g, id_map_sub, must_show
+    return None, None, None
+
+
+# 尝试加载预存数据
+sub_g_static, id_map_sub_static, must_show_static = load_static_files()
+
+# 如果加载成功，则使用默认的 slider 默认值来生成初始展示内容
+if sub_g_static is not None:
+    initial_display = refresh_display(
+        sub_g_static, id_map_sub_static, must_show_static,
+        "Set Limit", 10,  # complex
+        "Set Limit", 10,  # compound
+        "Set Limit", 10,  # disease
+        "Set Limit", 10,  # genetic_disorder
+        "Set Limit", 10,  # go
+        "Set Limit", 10,  # pathway
+        "Set Limit", 10,  # phenotype
+        "Set Limit", 10   # protein
+    )
+else:
+    initial_display = "<b>No preloaded data available.</b>"
+
 with gr.Blocks() as demo:
     gr.HTML(get_text_content("static/gr_head.html"))
     gr.Markdown(get_text_content())
 
-    html_output = gr.HTML(value=get_default_content())
-    subgraph_state = gr.State()
-    idmap_state = gr.State()
+    # 使用预加载的展示内容作为初始值
+    html_output = gr.HTML(value=initial_display)
+    # 如果有预加载数据，则设置初始状态，否则为空
+    subgraph_state = gr.State(value=sub_g_static)
+    idmap_state = gr.State(value=id_map_sub_static)
+    mustshow_state = gr.State(value=must_show_static)
 
     with gr.Row():
         with gr.Column():
@@ -153,23 +233,18 @@ with gr.Blocks() as demo:
             disease_input = gr.Textbox(label="Disease ID")
             pathway_input = gr.Textbox(label="Pathway ID")
             go_input = gr.Textbox(label="GO ID")
-
             inputs_1 = [protein_input, compound_input, disease_input, pathway_input, go_input]
-
         with gr.Column():
             gr.Markdown("### Sample Limit")
             gr.Markdown("Setup the sampling restriction parameters below.")
             depth_slider = gr.Slider(0, 4, step=1, label="Subgraph Sampling Depth", value=1)
-
             with gr.Accordion("Display Limit", open=False):
                 def slider_with_mode(label):
                     with gr.Row():
                         mode = gr.Radio(["Set Limit", "No Limit"], value="Set Limit", label=f"{label} Mode", interactive=True)
                         slider = gr.Slider(1, 20, step=1, value=10, label=label, visible=True)
-
                         def toggle_slider(mode_val):
                             return gr.update(visible=(mode_val == "Set Limit"))
-
                         mode.change(fn=toggle_slider, inputs=mode, outputs=slider)
                     return mode, slider
 
@@ -181,31 +256,30 @@ with gr.Blocks() as demo:
                 pathway_mode, pathway_limit = slider_with_mode("Pathway")
                 phenotype_mode, phenotype_limit = slider_with_mode("Phenotype")
                 protein_mode, protein_limit = slider_with_mode("Protein")
-
-                inputs_2 = [depth_slider,
-                            complex_mode, complex_limit,
-                            compound_mode, compound_limit,
-                            disease_mode, disease_limit,
-                            genetic_mode, genetic_limit,
-                            go_mode, go_limit,
-                            pathway_mode, pathway_limit,
-                            phenotype_mode, phenotype_limit,
-                            protein_mode, protein_limit]
+                limit_inputs = [complex_mode, complex_limit, compound_mode, compound_limit,
+                                disease_mode, disease_limit, genetic_mode, genetic_limit,
+                                go_mode, go_limit, pathway_mode, pathway_limit,
+                                phenotype_mode, phenotype_limit, protein_mode, protein_limit]
 
     msg = gr.Textbox("OUTPUT INFO", label="INFO")
     debug = gr.Textbox("DEBUG", label="debug")
 
-    inputs = inputs_1 + inputs_2
     run_btn.click(
         fn=run_query,
-        inputs=inputs,
-        outputs=[html_output, msg, debug, subgraph_state, idmap_state]
+        inputs=inputs_1 + [depth_slider] + limit_inputs,
+        outputs=[html_output, msg, debug, subgraph_state, idmap_state, mustshow_state]
     )
+
+    for inp in limit_inputs:
+        inp.change(
+            fn=refresh_display,
+            inputs=[subgraph_state, idmap_state, mustshow_state] + limit_inputs,
+            outputs=html_output
+        )
 
     down_btn.click(
         fn=download_entity,
         inputs=[subgraph_state, idmap_state],
         outputs=[download_file]
     )
-
     demo.launch()
