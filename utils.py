@@ -104,6 +104,32 @@ def degree_search(graph, node_type, node_name, node_map):
             if deg > 0:
                 print(f"  {etype}: {deg}")
 
+
+def analyze_connections(graph, sample_dict, id_map):
+    connection_stats = {}
+    for node_type, node_ids in sample_dict.items():
+        for node_id in node_ids:
+            node_stats = {"connected_nodes": {}, "connected_edges": {}}
+            for etype in graph.canonical_etypes:
+                # 统计出度
+                if etype[0] == node_type:
+                    neighbors = graph.successors(node_id, etype=etype).tolist()
+                    node_stats["connected_nodes"].setdefault(etype[2], 0)
+                    node_stats["connected_nodes"][etype[2]] += len(neighbors)
+                    node_stats["connected_edges"].setdefault(etype, 0)
+                    node_stats["connected_edges"][etype] += len(neighbors)
+                # 统计入度
+                if etype[2] == node_type:
+                    neighbors = graph.predecessors(node_id, etype=etype).tolist()
+                    node_stats["connected_nodes"].setdefault(etype[0], 0)
+                    node_stats["connected_nodes"][etype[0]] += len(neighbors)
+                    node_stats["connected_edges"].setdefault(etype, 0)
+                    node_stats["connected_edges"][etype] += len(neighbors)
+            connection_stats[(node_type, id_map[node_type][node_id])] = node_stats
+    return connection_stats
+
+
+
 def subgraph_by_node(graph, sample_dict, node_map, depth=1):
     """
     Get a subgraph centered around a specific node.
@@ -115,6 +141,7 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1):
     Output:
         - full_g: The subgraph centered around the node.
     """
+    cur_id_map = {}
     # print(f"Getting subgraph from: {sample_dict}")
     for node_type, node_names in sample_dict.items():
         for node_name in node_names:
@@ -123,7 +150,9 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1):
                 return
         # convert node names to node IDs
         sample_dict[node_type] = [node_map[node_type][node_name] for node_name in node_names]
-    
+        cur_id_map[node_type] = {node_map[node_type][node_name]: node_name for node_name in node_names}
+
+    connection_stats = analyze_connections(graph, sample_dict, cur_id_map)
 
     out_g, _ = dgl.khop_out_subgraph(graph, sample_dict, k=depth,
                                         relabel_nodes=True, store_ids=True)
@@ -167,8 +196,7 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1):
     # for etype in full_g.canonical_etypes:
     #     print(f"{etype}: {full_g.num_edges(etype)}")
     
-    return full_g, new2orig, new_node_map
-
+    return full_g, new2orig, new_node_map, connection_stats
 
 def report_subgraph(graph, id_map, save_root='static'):
     entities = defaultdict(list)

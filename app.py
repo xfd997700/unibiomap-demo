@@ -1,3 +1,6 @@
+import zipfile
+
+import yaml
 import gradio as gr
 import os
 import json
@@ -115,14 +118,20 @@ def run_query(protein, compound, disease, pathway, go, depth,
     must_show = sample_dict.copy()
     try:
         print('start sampling')
-        sub_g, new2orig, node_map_sub = subgraph_by_node(graph, sample_dict, node_map, depth=depth)
+        sub_g, new2orig, node_map_sub, statistics = subgraph_by_node(graph, sample_dict, node_map, depth=depth)
         id_map_sub = {k: {vv: kk for kk, vv in v.items()} for k, v in node_map_sub.items()}
+        # save statistics as json
+        with open(join(results_root, "statistics.yaml"), "w") as f:
+            yaml.dump(statistics, f)
+
+        statistics_text = "\n".join([f"{k}: {v}" for k, v in statistics.items()])
+        
         # 储存subgraph
         # save_subgraph_and_metadata(sub_g, id_map_sub, must_show)
         # 调用公共函数生成展示 HTML
         iframe_html, html_code = generate_iframe(sub_g, id_map_sub, must_show, display_limits)
 
-        return iframe_html, 'success', html_code, sub_g, id_map_sub, must_show
+        return iframe_html, 'success', statistics_text, sub_g, id_map_sub, must_show
     except Exception as e:
         return f"Error: {str(e)}", f"Error: {str(e)}", sample_dict, None, None, None
 
@@ -171,14 +180,32 @@ def get_text_content(file_path="static/gr_head.md"):
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
 
+# def download_entity(sub_g, id_map_sub):
+#     try:
+#         report_subgraph(sub_g, id_map_sub, save_root=results_root)
+#         path = join(results_root, 'triples.txt')
+#         return gr.update(value=path, visible=True)
+#     except Exception as e:
+#         return gr.update(value=f"Error: {e}", visible=True)
+
 def download_entity(sub_g, id_map_sub):
     try:
+        # 生成统计数据和三元组文件
         report_subgraph(sub_g, id_map_sub, save_root=results_root)
-        path = os.path.join(results_root, 'triples.txt')
-        return gr.update(value=path, visible=True)
+        triples_path = join(results_root, 'triples.txt')
+        statistics_path = join(results_root, 'statistics.yaml')
+
+        # 创建一个压缩文件
+        zip_path = join(results_root, 'results.zip')
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            zipf.write(triples_path, arcname='triples.txt')
+            zipf.write(statistics_path, arcname='statistics.yaml')
+
+        # 返回压缩文件路径
+        return gr.update(value=zip_path, visible=True)
     except Exception as e:
         return gr.update(value=f"Error: {e}", visible=True)
-
+    
 # 新增：加载静态文件的函数，如果存在则加载保存的子图数据
 def load_static_files():
     subgraph_file = "static/subgraph.dgl"
