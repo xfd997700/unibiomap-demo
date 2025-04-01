@@ -28,6 +28,7 @@ node_size = 500
 font_size = 10
 font_color = "black"
 results_root = "results/"
+os.makedirs(results_root, exist_ok=True)
 
 def load_or_process_graph():
     link_root = "database/unibiomap"
