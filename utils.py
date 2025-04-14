@@ -176,11 +176,11 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1):
     # TODO: 此处暂时使用 relabel_nodes=True 和 ID 重映射的策略，AI 模型中可以去除，直接使用全节点
     # === 构建新 ID 到原始 ID 的映射 ===
     print("构建新 ID 到原始 ID 的映射")
-    new2orig = {}
+    new2orig = defaultdict(dict)
     for ntype in full_g.ntypes:
         orig_ids = full_g.nodes[ntype].data[dgl.NID].tolist()
         for new_id, orig_id in enumerate(orig_ids):
-            new2orig[(ntype, new_id)] = orig_id
+            new2orig[ntype][new_id] = orig_id
 
     # === 构建 full_g 的新 node_map（名字 -> 新 ID） ===
     print("构建 full_g 的新 node_map（名字 -> 新 ID）")
