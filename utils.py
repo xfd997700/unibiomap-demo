@@ -153,11 +153,15 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1):
 
     connection_stats = analyze_connections(graph, sample_dict, cur_id_map)
 
+    print("Getting out subgraph1...")
     out_g, _ = dgl.khop_out_subgraph(graph, sample_dict, k=depth,
                                         relabel_nodes=True, store_ids=True)
+    print("Getting in subgraph...")
     in_g, _ = dgl.khop_in_subgraph(graph, sample_dict, k=depth,
                                     relabel_nodes=True, store_ids=True)
+    
     # 收集所有节点类型的原始 ID（合并去重）
+    print("收集所有节点类型的原始 ID（合并去重）")
     all_nodes = {}
     for ntype in graph.ntypes:
         out_nids = out_g.nodes[ntype].data[dgl.NID] if ntype in out_g.ntypes else torch.tensor([], dtype=torch.int64)
@@ -166,10 +170,12 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1):
         all_nodes[ntype] = combined
     
     # 直接从原始图提取包含这些节点的子图
+    print("直接从原始图提取包含这些节点的子图")
     full_g = dgl.node_subgraph(graph, all_nodes, relabel_nodes=True, store_ids=True)
 
     # TODO: 此处暂时使用 relabel_nodes=True 和 ID 重映射的策略，AI 模型中可以去除，直接使用全节点
     # === 构建新 ID 到原始 ID 的映射 ===
+    print("构建新 ID 到原始 ID 的映射")
     new2orig = {}
     for ntype in full_g.ntypes:
         orig_ids = full_g.nodes[ntype].data[dgl.NID].tolist()
@@ -177,15 +183,32 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1):
             new2orig[(ntype, new_id)] = orig_id
 
     # === 构建 full_g 的新 node_map（名字 -> 新 ID） ===
+    print("构建 full_g 的新 node_map（名字 -> 新 ID）")
     new_node_map = {}
     for ntype in full_g.ntypes:
+        # 构建 id -> name 的反向映射
+        relevant_ids = set(full_g.nodes[ntype].data[dgl.NID].tolist())
+        id_to_name = {v: k for k, v in node_map[ntype].items() if v in relevant_ids}
+
+        # id_to_name = {v: k for k, v in node_map[ntype].items()}
+
         orig_ids = full_g.nodes[ntype].data[dgl.NID].tolist()
         new_node_map[ntype] = {}
+
         for new_id, orig_id in enumerate(orig_ids):
-            for name, id_val in node_map[ntype].items():
-                if id_val == orig_id:
-                    new_node_map[ntype][name] = new_id
-                    break
+            node_name = id_to_name.get(orig_id)
+            if node_name is not None:
+                new_node_map[ntype][node_name] = new_id
+
+    # new_node_map = {}
+    # for ntype in full_g.ntypes:
+    #     orig_ids = full_g.nodes[ntype].data[dgl.NID].tolist()
+    #     new_node_map[ntype] = {}
+    #     for new_id, orig_id in enumerate(orig_ids):
+    #         for name, id_val in node_map[ntype].items():
+    #             if id_val == orig_id:
+    #                 new_node_map[ntype][name] = new_id
+    #                 break
 
     # print("Node type counts:")
     # for ntype in full_g.ntypes:
