@@ -6,3 +6,5 @@
 /results
 /static/subgraph.dgl
 temp.ipynb
+SLC_process.ipynb
+SLC_sampling.ipynb
