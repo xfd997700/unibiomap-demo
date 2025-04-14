@@ -5,9 +5,6 @@ import gradio as gr
 import os
 import json
 import dgl
-import torch
-import networkx as nx
-import matplotlib.pyplot as plt
 from utils import *
 from os.path import join
 import base64

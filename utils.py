@@ -8,14 +8,13 @@ import networkx as nx
 import gdown
 import matplotlib.pyplot as plt
 
-file_id = "1tUe3YVyA2K2Xh_GORWYaOGEKyYE5vnAp"
-url = f"https://drive.google.com/uc?id={file_id}"
+# file_id = "1tUe3YVyA2K2Xh_GORWYaOGEKyYE5vnAp"
+# url = f"https://drive.google.com/uc?id={file_id}"
+url = "https://github.com/xfd997700/unibiomap_demo/releases/download/dev/unibiomap.links.tsv"
 def download_raw_kg(link_path):
     os.makedirs(os.path.dirname(link_path), exist_ok=True)
     # Download the file from Google Drive and show the progress
     gdown.download(url, link_path, quiet=False)
-
-
 
 def nodemap2idmap(node_map):
     return {k: {vv: kk for kk, vv in v.items()} for k, v in node_map.items()}
