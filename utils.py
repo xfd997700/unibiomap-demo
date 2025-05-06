@@ -14,7 +14,7 @@ import zipfile
 # url = f"https://drive.google.com/uc?id={file_id}"
 url = "https://github.com/xfd997700/unibiomap_demo/releases/download/dev/unibiomap.zip"
 def download_raw_kg(link_root):
-    os.makedirs(os.path.dirname(link_root), exist_ok=True)
+    os.makedirs(link_root, exist_ok=True)
     # Download the file from GitHub and show the progress
     file_path = os.path.join(link_root, "unibiomap.zip")
     gdown.download(url, file_path, quiet=False)
