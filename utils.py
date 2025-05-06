@@ -37,7 +37,6 @@ def load_desc(desc_path_dict):
     desc_dict['pathway'] = repair_smpdb_name(desc_dict['pathway'])
     return desc_dict
 
-
 def nodemap2idmap(node_map):
     return {k: {vv: kk for kk, vv in v.items()} for k, v in node_map.items()}
 
