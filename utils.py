@@ -367,7 +367,6 @@ def generate_echarts_html(echarts_data):
                         var target_show = params.data?.target_show;
                         var source_group = params.data?.source_group;
                         var target_group = params.data?.target_group;
-
                         return `<div style="max-width:400px;">
                                     <div style="font-weight:bold;">
                                         <span style="color:#999; font-size:12px;">
