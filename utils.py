@@ -20,7 +20,7 @@ def download_raw_kg(link_root):
     gdown.download(url, file_path, quiet=False)
     # use zipfile unzip the file and delete the zip file
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
-        zip_ref.extractall(os.path.dirname(link_root))
+        zip_ref.extractall(os.path.dirname(file_path))
     os.remove(file_path)
     print(f"Downloaded and extracted files to {os.path.dirname(link_root)}")
 
