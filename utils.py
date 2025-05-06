@@ -6,15 +6,35 @@ from tqdm import tqdm
 import os
 import networkx as nx
 import gdown
-import matplotlib.pyplot as plt
+import sys
+import zipfile
+# import matplotlib.pyplot as plt
 
 # file_id = "1tUe3YVyA2K2Xh_GORWYaOGEKyYE5vnAp"
 # url = f"https://drive.google.com/uc?id={file_id}"
-url = "https://github.com/xfd997700/unibiomap_demo/releases/download/dev/unibiomap.links.tsv"
-def download_raw_kg(link_path):
-    os.makedirs(os.path.dirname(link_path), exist_ok=True)
-    # Download the file from Google Drive and show the progress
-    gdown.download(url, link_path, quiet=False)
+url = "https://github.com/xfd997700/unibiomap_demo/releases/download/dev/unibiomap.zip"
+def download_raw_kg(link_root):
+    os.makedirs(os.path.dirname(link_root), exist_ok=True)
+    # Download the file from GitHub and show the progress
+    file_path = os.path.join(link_root, "unibiomap.zip")
+    gdown.download(url, file_path, quiet=False)
+    # use zipfile unzip the file and delete the zip file
+    with zipfile.ZipFile(file_path, 'r') as zip_ref:
+        zip_ref.extractall(os.path.dirname(link_root))
+    os.remove(file_path)
+    print(f"Downloaded and extracted files to {os.path.dirname(link_root)}")
+
+def load_desc(desc_path_dict):
+    """
+    Load the description files and return a dictionary of descriptions.
+    """
+    desc_dict = {}
+    for key, path in desc_path_dict.items():
+        with open(path, 'r') as f:
+            cur_dict = json.load(f)
+        desc_dict[key] = {sys.intern(k): v for k, v in cur_dict.items()}
+    return desc_dict
+
 
 def nodemap2idmap(node_map):
     return {k: {vv: kk for kk, vv in v.items()} for k, v in node_map.items()}
@@ -129,7 +149,8 @@ def analyze_connections(graph, sample_dict, id_map):
 
 
 
-def subgraph_by_node(graph, sample_dict, node_map, depth=1):
+def subgraph_by_node(graph, sample_dict, node_map, depth=1,
+                     relabel_nodes=True):
     """
     Get a subgraph centered around a specific node.
     Parameters:
@@ -171,6 +192,10 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1):
     
     # 直接从原始图提取包含这些节点的子图
     print("直接从原始图提取包含这些节点的子图")
+    if not relabel_nodes:
+        full_g = dgl.node_subgraph(graph, all_nodes, relabel_nodes=False)
+        return full_g
+    
     full_g = dgl.node_subgraph(graph, all_nodes, relabel_nodes=True, store_ids=True)
 
     # TODO: 此处暂时使用 relabel_nodes=True 和 ID 重映射的策略，AI 模型中可以去除，直接使用全节点
@@ -305,6 +330,7 @@ def convert_subgraph_to_networkx(sub_g, id_map,
 # === Generate HTML with ECharts ===
 def generate_echarts_html(echarts_data):
     data = json.loads(echarts_data)
+
     html_code = f"""
     <div id=\"main\" style=\"width:100%;height:100%;\"></div>
     <script src=\"https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js\"></script>
@@ -312,7 +338,51 @@ def generate_echarts_html(echarts_data):
         var chartDom = document.getElementById('main');
         var myChart = echarts.init(chartDom);
         var option = {{
-            tooltip: {{}},
+            tooltip: {{
+                formatter: function (params) {{
+                    if (params.data.type == "edge") {{
+                        // 这是边
+                        var source_show = params.data?.source_show;
+                        var target_show = params.data?.target_show;
+                        var source_group = params.data?.source_group;
+                        var target_group = params.data?.target_group;
+
+                        return `<div style="max-width:400px;">
+                                    <div style="font-weight:bold;">
+                                        <span style="color:#999; font-size:12px;">
+                                            ${{source_group + ' -- ' + target_group}}
+                                        </span>
+                                        <br>
+                                        ${{source_show + ' -- ' + target_show}}
+                                    </div>
+                                </div>`;
+                    }}
+
+                    var color = params.color || '#000';
+                    var name = params.data.tooltip_name || params.data.name;
+                    var desc = params.data.tooltip_desc || params.data.value;
+                    return `<div>
+                                <div style="display:flex;align-items:center;">
+                                    <span style="display:inline-block;width:10px;height:10px;
+                                                border-radius:5px;background:${{color}};margin-right:6px;"></span>
+                                    <span style="font-weight:bold;
+                                        max-width: 400px;
+                                        white-space: nowrap;
+                                        overflow: hidden;
+                                        text-overflow: ellipsis;
+                                        display: inline-block;">
+                                        ${{name}}
+                                    </span>
+                                </div>
+                                <div style="margin-left:16px; max-width:400px;
+                                    white-space:normal; word-wrap:break-word;
+                                    overflow:hidden; text-overflow:ellipsis;
+                                    display:-webkit-box; -webkit-line-clamp:10; -webkit-box-orient:vertical;">
+                                    ${{desc}}
+                                </div>
+                            </div>`;
+                }}
+            }},
             legend: [{{
                 data: {json.dumps([cat['name'] for cat in data['categories']])},
 
@@ -327,7 +397,7 @@ def generate_echarts_html(echarts_data):
                 links: {json.dumps(data['links'])},
                 categories: {json.dumps(data['categories'])},
                 force: {{
-                    repulsion: 300,
+                    repulsion: 800,
                     edgeLength: 120
                 }},
                 emphasis: {{
@@ -361,18 +431,69 @@ def get_url_by_id(id, group):
         id = id.split(":")[-1]
         return f"https://www.ebi.ac.uk/unichem/compoundsources?type=uci&compound={id}"
     if group == "disease":
-        id = 'mesh:' + id
-    if id.startswith("R-HSA"):
-        id = 'reactome:' + id
-    if id.startswith("hsa"):
-        return f"https://www.kegg.jp/pathway/{id}"
-    if id.startswith("SMP"):
-        id = 'smpdb:' + id
+        id = id.split(':')[1]
+        return f"https://uts.nlm.nih.gov/uts/umls/concept/{id}"
+    if group == "pathway":
+        if id.startswith("R-"):
+            id = 'reactome:' + id
+        elif id.startswith("SMP"):
+            id = 'smpdb:' + id
+        if id.startswith("hsa"):
+            return f"https://www.kegg.jp/pathway/{id}"
+    
     url = base_url + id
     return url
 
+def fetch_desc_info(nid, ntype, desc_dict):
+    url = get_url_by_id(nid, ntype) if ntype!='other' else None
+
+    cur_desc = desc_dict.get(ntype, {}).get(sys.intern(nid), {})
+    if ntype == 'protein':
+        nname = cur_desc.get('entry_name', nid)
+        if nname is None: nname = nid
+        ndesc = cur_desc.get('protein_name', nid)
+        if ndesc is None: ndesc = nid
+        node_desc = {
+            "name": nname,
+            "category": ntype,
+            "desc": ndesc,
+            "url": url,
+            "tooltip_name": nname + '<br>' + nid,
+            "tooltip_desc": ndesc
+        }
+    elif ntype == 'compound':
+        nname = cur_desc.get('name', nid)
+        if nname is None: nname = cur_desc.get('inchikey', nid)
+        ndesc = cur_desc.get('smiles', nid)
+        node_desc = {
+            "name": nid,
+            "category": ntype,
+            "desc": ndesc,
+            "url": url,
+            "tooltip_name": nname + '<br>' + nid,
+            "tooltip_desc": ndesc
+        }
+    else:
+        nname = cur_desc.get('name', nid)
+        ndesc = cur_desc.get('definition', nname)
+        node_desc = {
+            "name": nname,
+            "category": ntype,
+            "desc": ndesc,
+            "url": url,
+            "tooltip_name": nname + '<br>' + nid,
+            "tooltip_desc": ndesc
+        }
+
+    return node_desc
+    # elif ntype == 'compound':
+    #     nname = 
+
+
+
 # === Convert NX Graph to ECharts JSON ===
-def nx_to_echarts_json(G, color_map, base_size=12, max_ratio=2.5):
+def nx_to_echarts_json(G, color_map, desc_dict,
+                       base_size=12, max_ratio=2.5):
     nodes = []
     links = []
 
@@ -391,20 +512,38 @@ def nx_to_echarts_json(G, color_map, base_size=12, max_ratio=2.5):
         id = node[0]
         deg = degrees[node[0]]
         group = node[1].get("group", "other")
-        url = get_url_by_id(label, group) if group!='other' else None
-        nodes.append({
-            "name": label,
-            "value": id,
-            "category": group,
-            "symbolSize": scale(deg),
-            "url": url
-        })
+
+        node_desc = fetch_desc_info(label, group, desc_dict)
+        node_desc["type"] = "node"
+        node_desc['value'] = id
+        node_desc['symbolSize'] = scale(deg)
+        nodes.append(node_desc)
+
+        node[1]['ident'] = node_desc['name']
+
+        # url = get_url_by_id(label, group) if group!='other' else None
+        # nodes.append({
+        #     "name": label,
+        #     "value": id,
+        #     "category": group,
+        #     "symbolSize": scale(deg),
+        #     "url": url
+        # })
     for edge in G.edges():
-        source_label = G.nodes[edge[0]].get("label", edge[0])
-        target_label = G.nodes[edge[1]].get("label", edge[1])
+        source_label = G.nodes[edge[0]].get("ident", edge[0])
+        source_show = G.nodes[edge[0]].get("label", False)
+        source_group = G.nodes[edge[0]].get("group", "other")
+        target_label = G.nodes[edge[1]].get("ident", edge[1])
+        target_show = G.nodes[edge[1]].get("label", False)
+        target_group = G.nodes[edge[1]].get("group", "other")
         links.append({
+            "type": "edge",
             "source": source_label,
-            "target": target_label
+            "target": target_label,
+            "source_show": source_show,
+            "target_show": target_show,
+            "source_group": source_group,
+            "target_group": target_group,
         })
     categories = [{"name": cat, "itemStyle": {"color": color_map.get(cat, '#ccc')}} for cat in color_map]
     return json.dumps({"nodes": nodes, "links": links, "categories": categories}, ensure_ascii=False)

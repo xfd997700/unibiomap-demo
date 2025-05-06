@@ -9,13 +9,21 @@ from utils import *
 from os.path import join
 import base64
 
+desc_path_dict = {
+    "compound": "../UniBioMap/database/core_kg/compound_desc.json",
+    "protein": "../UniBioMap/database/core_kg/protein_desc.json",
+    "pathway": "../UniBioMap/database/core_kg/pathway_desc.json",
+    "go": "../UniBioMap/database/core_kg/go_desc.json",
+    "disease": "../UniBioMap/database/core_kg/disease_desc.json",
+    "phenotype": "../UniBioMap/database/core_kg/phenotype_desc.json"
+}
 # TODO:尝试打开项目直接启动一次检索，避免加载静态
 
 color_map = {
-    'complex': '#FFA07A',
+    # 'complex': '#FFA07A',
     'compound': '#98FB98',
     'disease': '#FFD700',
-    'genetic_disorder': '#FF69B4',
+    # 'genetic_disorder': '#FF69B4',
     'go': '#87CEEB',
     'pathway': '#DDA0DD',
     'phenotype': '#808080',
@@ -43,8 +51,8 @@ def load_or_process_graph():
             node_map = json.load(f)
         graph = dgl.load_graphs(graph_path)[0][0]
     else:
-        if not os.path.exists(link_path):
-            download_raw_kg(link_path)
+        if not os.path.exists(link_root):
+            download_raw_kg(link_root)
         graph, node_map = process_knowledge_graph(link_path, simplify_edge=True)
         dgl.save_graphs(graph_path, [graph])
         with open(node_map_path, "w") as f:
@@ -54,6 +62,7 @@ def load_or_process_graph():
     return graph, node_map, id_map
 
 graph, node_map, id_map = load_or_process_graph()
+desc_dict = load_desc(desc_path_dict)
 
 def fetch_input_id(input_string):
     if not input_string:
@@ -78,7 +87,7 @@ def save_subgraph_and_metadata(sub_g, id_map_sub, must_show, save_dir="static"):
 def generate_iframe(sub_g, id_map_sub, must_show, display_limits):
     remove_self_loop = True
     G = convert_subgraph_to_networkx(sub_g, id_map_sub, display_limits, must_show, remove_self_loop)
-    echarts_data = nx_to_echarts_json(G, color_map)
+    echarts_data = nx_to_echarts_json(G, color_map, desc_dict)
     html_code = generate_echarts_html(echarts_data)
     html_base64 = base64.b64encode(html_code.encode('utf-8')).decode('utf-8')
     data_uri = f"data:text/html;base64,{html_base64}"
@@ -86,10 +95,10 @@ def generate_iframe(sub_g, id_map_sub, must_show, display_limits):
     return iframe_html, html_code
 
 def run_query(protein, compound, disease, pathway, go, depth,
-              complex_mode, complex_limit,
+            #   complex_mode, complex_limit,
               compound_mode, compound_limit,
               disease_mode, disease_limit,
-              genetic_mode, genetic_limit,
+            #   genetic_mode, genetic_limit,
               go_mode, go_limit,
               pathway_mode, pathway_limit,
               phenotype_mode, phenotype_limit,
@@ -103,10 +112,10 @@ def run_query(protein, compound, disease, pathway, go, depth,
         "go": fetch_input_id(go)
     }
     display_limits = {
-        'complex': get_limit(complex_mode, complex_limit),
+        # 'complex': get_limit(complex_mode, complex_limit),
         'compound': get_limit(compound_mode, compound_limit),
         'disease': get_limit(disease_mode, disease_limit),
-        'genetic_disorder': get_limit(genetic_mode, genetic_limit),
+        # 'genetic_disorder': get_limit(genetic_mode, genetic_limit),
         'go': get_limit(go_mode, go_limit),
         'pathway': get_limit(pathway_mode, pathway_limit),
         'phenotype': get_limit(phenotype_mode, phenotype_limit),
@@ -134,10 +143,10 @@ def run_query(protein, compound, disease, pathway, go, depth,
         return f"Error: {str(e)}", f"Error: {str(e)}", sample_dict, None, None, None
 
 def refresh_display(sub_g, id_map_sub, must_show,
-                    complex_mode, complex_limit,
+                    # complex_mode, complex_limit,
                     compound_mode, compound_limit,
                     disease_mode, disease_limit,
-                    genetic_mode, genetic_limit,
+                    # genetic_mode, genetic_limit,
                     go_mode, go_limit,
                     pathway_mode, pathway_limit,
                     phenotype_mode, phenotype_limit,
@@ -147,10 +156,10 @@ def refresh_display(sub_g, id_map_sub, must_show,
         return gr.update(value="<b>Please run query first.</b>")
 
     display_limits = {
-        'complex': get_limit(complex_mode, complex_limit),
+        # 'complex': get_limit(complex_mode, complex_limit),
         'compound': get_limit(compound_mode, compound_limit),
         'disease': get_limit(disease_mode, disease_limit),
-        'genetic_disorder': get_limit(genetic_mode, genetic_limit),
+        # 'genetic_disorder': get_limit(genetic_mode, genetic_limit),
         'go': get_limit(go_mode, go_limit),
         'pathway': get_limit(pathway_mode, pathway_limit),
         'phenotype': get_limit(phenotype_mode, phenotype_limit),
@@ -240,10 +249,10 @@ empty_display = get_default_content()
 if sub_g_static is not None:
     initial_display = refresh_display(
         sub_g_static, id_map_sub_static, must_show_static,
-        "Set Limit", 10,  # complex
+        # "Set Limit", 10,  # complex
         "Set Limit", 10,  # compound
         "Set Limit", 10,  # disease
-        "Set Limit", 10,  # genetic_disorder
+        # "Set Limit", 10,  # genetic_disorder
         "Set Limit", 10,  # go
         "Set Limit", 10,  # pathway
         "Set Limit", 10,  # phenotype
@@ -296,16 +305,19 @@ with gr.Blocks() as demo:
                         mode.change(fn=toggle_slider, inputs=mode, outputs=slider)
                     return mode, slider
 
-                complex_mode, complex_limit = slider_with_mode("Complex")
+                # complex_mode, complex_limit = slider_with_mode("Complex")
                 compound_mode, compound_limit = slider_with_mode("Compound")
                 disease_mode, disease_limit = slider_with_mode("Disease")
-                genetic_mode, genetic_limit = slider_with_mode("Genetic Disorder")
+                # genetic_mode, genetic_limit = slider_with_mode("Genetic Disorder")
                 go_mode, go_limit = slider_with_mode("GO")
                 pathway_mode, pathway_limit = slider_with_mode("Pathway")
                 phenotype_mode, phenotype_limit = slider_with_mode("Phenotype")
                 protein_mode, protein_limit = slider_with_mode("Protein")
-                limit_inputs = [complex_mode, complex_limit, compound_mode, compound_limit,
-                                disease_mode, disease_limit, genetic_mode, genetic_limit,
+                limit_inputs = [
+                    # complex_mode, complex_limit,
+                                compound_mode, compound_limit,
+                                disease_mode, disease_limit,
+                                # genetic_mode, genetic_limit,
                                 go_mode, go_limit, pathway_mode, pathway_limit,
                                 phenotype_mode, phenotype_limit, protein_mode, protein_limit]
 
