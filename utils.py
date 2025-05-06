@@ -1,3 +1,4 @@
+import html
 import json
 import dgl
 import torch
@@ -33,6 +34,7 @@ def load_desc(desc_path_dict):
         with open(path, 'r') as f:
             cur_dict = json.load(f)
         desc_dict[key] = {sys.intern(k): v for k, v in cur_dict.items()}
+    desc_dict['pathway'] = repair_smpdb_name(desc_dict['pathway'])
     return desc_dict
 
 
@@ -327,6 +329,26 @@ def convert_subgraph_to_networkx(sub_g, id_map,
 
     return G
 
+# TODO: SMPDB中存在一些（极少，3对儿）名称和描述完全一致但是 ID 不一致的通路，实际检索其通路图可能不同
+# 暂时在其name后加上ID以进行区分，以避免绘制ECharts时的冲突
+def repair_smpdb_name(pathway_dict):
+    smp_dict = {
+        k: v['name'] for k, v in pathway_dict.items() if k.startswith('SMP')
+    }  
+    reverse_map = defaultdict(list)
+    
+    for key, value in smp_dict.items():
+        reverse_map[value].append(key)
+    
+    # 筛选出有多个key的value
+    result = [values for values in reverse_map.values() if len(values) > 1]
+    result = [item for sublist in result for item in sublist]
+
+    for k in result:
+        pathway_dict[k]['name'] = pathway_dict[k]['name'] + f" ({k})"
+    return pathway_dict
+
+
 # === Generate HTML with ECharts ===
 def generate_echarts_html(echarts_data):
     data = json.loads(echarts_data)
@@ -438,7 +460,7 @@ def get_url_by_id(id, group):
             id = 'reactome:' + id
         elif id.startswith("SMP"):
             id = 'smpdb:' + id
-        if id.startswith("hsa"):
+        else:
             return f"https://www.kegg.jp/pathway/{id}"
     
     url = base_url + id
@@ -482,7 +504,7 @@ def fetch_desc_info(nid, ntype, desc_dict):
             "desc": ndesc,
             "url": url,
             "tooltip_name": nname + '<br>' + nid,
-            "tooltip_desc": ndesc
+            "tooltip_desc": html.escape(ndesc).replace('\n', '<br>')
         }
 
     return node_desc
