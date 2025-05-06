@@ -10,12 +10,12 @@ from os.path import join
 import base64
 
 desc_path_dict = {
-    "compound": "../UniBioMap/database/core_kg/compound_desc.json",
-    "protein": "../UniBioMap/database/core_kg/protein_desc.json",
-    "pathway": "../UniBioMap/database/core_kg/pathway_desc.json",
-    "go": "../UniBioMap/database/core_kg/go_desc.json",
-    "disease": "../UniBioMap/database/core_kg/disease_desc.json",
-    "phenotype": "../UniBioMap/database/core_kg/phenotype_desc.json"
+    "compound": "database/unibiomap/compound_desc.json",
+    "protein": "database/unibiomap/protein_desc.json",
+    "pathway": "database/unibiomap/core_kg/pathway_desc.json",
+    "go": "database/unibiomap/core_kg/go_desc.json",
+    "disease": "database/unibiomap/core_kg/disease_desc.json",
+    "phenotype": "database/unibiomap/core_kg/phenotype_desc.json"
 }
 # TODO:尝试打开项目直接启动一次检索，避免加载静态
 
