@@ -175,20 +175,37 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1,
 
     connection_stats = analyze_connections(graph, sample_dict, cur_id_map)
 
-    print("Getting out subgraph1...")
-    out_g, _ = dgl.khop_out_subgraph(graph, sample_dict, k=depth,
-                                        relabel_nodes=True, store_ids=True)
-    print("Getting in subgraph...")
-    in_g, _ = dgl.khop_in_subgraph(graph, sample_dict, k=depth,
-                                    relabel_nodes=True, store_ids=True)
+    # print("Getting out subgraph1...")
+    # out_g, _ = dgl.khop_out_subgraph(graph, sample_dict, k=depth,
+    #                                     relabel_nodes=True, store_ids=True)
+    # print("Getting in subgraph...")
+    # in_g, _ = dgl.khop_in_subgraph(graph, sample_dict, k=depth,
+    #                                 relabel_nodes=True, store_ids=True)
+
+    # TODO: 由于有向图的 khop 采样策略问题，可能导致二阶以上的采样不完整
+    # 例如 A->B<-C 就会导致 C 无法被采样到
+    # 一个临时的解决方案：使用 AddReverse 构造双向图，然后使用其中一个方向进行采样
+    # 但是未来加入边缘src或者类型时可能要考虑修改策略
+    # ====================================================================================================
+    # 构造双向图 （在外部 app.py 构造）
     
+    # 使用其中一个方向进行采样即可（已经是双向）
+    full_g, _ = dgl.khop_in_subgraph(graph, sample_dict, k=depth, relabel_nodes=True, store_ids=True)
+    # ====================================================================================================
+
     # 收集所有节点类型的原始 ID（合并去重）
     print("收集所有节点类型的原始 ID（合并去重）")
     all_nodes = {}
     for ntype in graph.ntypes:
-        out_nids = out_g.nodes[ntype].data[dgl.NID] if ntype in out_g.ntypes else torch.tensor([], dtype=torch.int64)
-        in_nids = in_g.nodes[ntype].data[dgl.NID] if ntype in in_g.ntypes else torch.tensor([], dtype=torch.int64)
-        combined = torch.cat([out_nids, in_nids]).unique()
+        # 单向图版
+        # out_nids = out_g.nodes[ntype].data[dgl.NID] if ntype in out_g.ntypes else torch.tensor([], dtype=torch.int64)
+        # in_nids = in_g.nodes[ntype].data[dgl.NID] if ntype in in_g.ntypes else torch.tensor([], dtype=torch.int64)
+        # combined = torch.cat([out_nids, in_nids]).unique()
+
+        # 双向图版
+        combined = full_g.nodes[ntype].data[dgl.NID] if ntype in full_g.ntypes else torch.tensor([], dtype=torch.int64)
+        combined = combined.unique()
+
         all_nodes[ntype] = combined
     
     # 直接从原始图提取包含这些节点的子图
@@ -307,7 +324,8 @@ def convert_subgraph_to_networkx(sub_g, id_map,
         for nid in node_ids:
             node_label = id_map.get(ntype, {}).get(nid, f"{ntype}_{nid}")
             node_id = f"{ntype}_{nid}"
-            G.add_node(node_id, label=node_label, title=node_label, group=ntype)
+            is_highlight = nid in must_nodes
+            G.add_node(node_id, label=node_label, title=node_label, group=ntype, highlight=is_highlight)
 
     # 添加边：仅保留两端节点都在显示集合内的边
     for canonical_etype in sub_g.canonical_etypes:
@@ -534,23 +552,25 @@ def nx_to_echarts_json(G, color_map, desc_dict,
         id = node[0]
         deg = degrees[node[0]]
         group = node[1].get("group", "other")
+        is_highlight = node[1].get("highlight", False)  # 获取 highlight 属性
 
         node_desc = fetch_desc_info(label, group, desc_dict)
         node_desc["type"] = "node"
         node_desc['name'] = id
-        node_desc['symbolSize'] = scale(deg)
+        # node_desc['symbolSize'] = scale(deg)
+        node_desc['label'] = {
+            "show": True,
+            "position": "right",
+            "fontWeight": "bold" if is_highlight else "normal",  # 高亮节点加粗
+            "fontSize": 14 if is_highlight else 12,  # 高亮节点增大字体
+            # "backgroundColor": "rgba(242, 191, 203, 0.7)" if is_highlight else None  # 可选：为高亮节点的标签添加背景色
+        }
+        node_desc['symbolSize'] = scale(deg) * (1.3 if is_highlight else 1)  # 高亮节点放大
+        # node_desc['itemStyle'] = {"color": "#ff0000"} if is_highlight else None  # 高亮节点颜色
         nodes.append(node_desc)
 
         # node[1]['ident'] = node_desc['name']
 
-        # url = get_url_by_id(label, group) if group!='other' else None
-        # nodes.append({
-        #     "name": label,
-        #     "value": id,
-        #     "category": group,
-        #     "symbolSize": scale(deg),
-        #     "url": url
-        # })
     for edge in G.edges():
         source_label = edge[0] # use node id
         source_show = G.nodes[edge[0]].get("label", False)

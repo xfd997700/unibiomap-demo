@@ -64,6 +64,9 @@ def load_or_process_graph():
 graph, node_map, id_map = load_or_process_graph()
 desc_dict = load_desc(desc_path_dict)
 
+# 构造双向图
+graph = dgl.AddReverse(copy_edata=True, sym_new_etype=False)(graph)
+
 def fetch_input_id(input_string):
     if not input_string:
         return []
