@@ -406,7 +406,7 @@ def generate_echarts_html(echarts_data):
                                     <span style="display:inline-block;width:10px;height:10px;
                                                 border-radius:5px;background:${{color}};margin-right:6px;"></span>
                                     <span style="font-weight:bold;
-                                        max-width: 400px;
+                                        max-width: 350px;
                                         white-space: nowrap;
                                         overflow: hidden;
                                         text-overflow: ellipsis;
@@ -414,7 +414,7 @@ def generate_echarts_html(echarts_data):
                                         ${{name}}
                                     </span>
                                 </div>
-                                <div style="margin-left:16px; max-width:400px;
+                                <div style="margin-left:16px; max-width:350px;
                                     white-space:normal; word-wrap:break-word;
                                     overflow:hidden; text-overflow:ellipsis;
                                     display:-webkit-box; -webkit-line-clamp:10; -webkit-box-orient:vertical;">
@@ -490,7 +490,14 @@ def get_url_by_id(id, group):
     url = base_url + id
     return url
 
+def fetch_compound_img(uci):
+    base_url = "https://www.ebi.ac.uk/unichem/api/v1/images"
+    uci = uci.split(":")[-1]
+    img_url = f"{base_url}/{uci}"
+    return img_url
+
 def fetch_desc_info(nid, ntype, desc_dict):
+
     url = get_url_by_id(nid, ntype) if ntype!='other' else None
 
     cur_desc = desc_dict.get(ntype, {}).get(sys.intern(nid), {})
@@ -510,6 +517,8 @@ def fetch_desc_info(nid, ntype, desc_dict):
         nname = cur_desc.get('name', nid)
         if nname is None: nname = cur_desc.get('inchikey', nid)
         ndesc = cur_desc.get('smiles', nid)
+        img_url = fetch_compound_img(nid)
+        ndesc = f"{ndesc}<br><img src='{img_url}' style='max-width:200px; max-height:200px;'>"
         node_desc = {
             "value": nid,
             "category": ntype,
