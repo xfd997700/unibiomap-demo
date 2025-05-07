@@ -187,8 +187,10 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1,
     # 一个临时的解决方案：使用 AddReverse 构造双向图，然后使用其中一个方向进行采样
     # 但是未来加入边缘src或者类型时可能要考虑修改策略
     # ====================================================================================================
-    # 构造双向图 （在外部 app.py 构造）
-    
+    # 构造双向图 （在外部 app.py 构造可能导致统计错误）
+        # 构造双向图
+    graph = dgl.AddReverse(copy_edata=True, sym_new_etype=False)(graph)
+        
     # 使用其中一个方向进行采样即可（已经是双向）
     full_g, _ = dgl.khop_in_subgraph(graph, sample_dict, k=depth, relabel_nodes=True, store_ids=True)
     # ====================================================================================================
