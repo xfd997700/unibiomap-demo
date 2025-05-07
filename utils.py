@@ -411,7 +411,13 @@ def generate_echarts_html(echarts_data):
                 type: 'graph',
                 layout: 'force',
                 roam: true,
-                label: {{ show: true, position: 'right' }},
+                label: {{
+                    show: true,
+                    position: 'right',
+                    formatter: function (params) {{
+                        return params.data.value || params.data.name; // 自定义显示字段
+                    }}
+                }},
                 edgeSymbol: ['none', 'none'],
                 data: {json.dumps(data['nodes'])},
                 links: {json.dumps(data['links'])},
@@ -474,9 +480,8 @@ def fetch_desc_info(nid, ntype, desc_dict):
         ndesc = cur_desc.get('protein_name', nid)
         if ndesc is None: ndesc = nid
         node_desc = {
-            "name": nname,
+            "value": nname,
             "category": ntype,
-            "desc": ndesc,
             "url": url,
             "tooltip_name": nname + '<br>' + nid,
             "tooltip_desc": ndesc
@@ -486,9 +491,8 @@ def fetch_desc_info(nid, ntype, desc_dict):
         if nname is None: nname = cur_desc.get('inchikey', nid)
         ndesc = cur_desc.get('smiles', nid)
         node_desc = {
-            "name": nid,
+            "value": nid,
             "category": ntype,
-            "desc": ndesc,
             "url": url,
             "tooltip_name": nname + '<br>' + nid,
             "tooltip_desc": ndesc
@@ -497,9 +501,8 @@ def fetch_desc_info(nid, ntype, desc_dict):
         nname = cur_desc.get('name', nid)
         ndesc = cur_desc.get('definition', nname)
         node_desc = {
-            "name": nname,
+            "value": nname,
             "category": ntype,
-            "desc": ndesc,
             "url": url,
             "tooltip_name": nname + '<br>' + nid,
             "tooltip_desc": html.escape(ndesc).replace('\n', '<br>')
@@ -508,7 +511,6 @@ def fetch_desc_info(nid, ntype, desc_dict):
     return node_desc
     # elif ntype == 'compound':
     #     nname = 
-
 
 
 # === Convert NX Graph to ECharts JSON ===
@@ -535,11 +537,11 @@ def nx_to_echarts_json(G, color_map, desc_dict,
 
         node_desc = fetch_desc_info(label, group, desc_dict)
         node_desc["type"] = "node"
-        node_desc['value'] = id
+        node_desc['name'] = id
         node_desc['symbolSize'] = scale(deg)
         nodes.append(node_desc)
 
-        node[1]['ident'] = node_desc['name']
+        # node[1]['ident'] = node_desc['name']
 
         # url = get_url_by_id(label, group) if group!='other' else None
         # nodes.append({
@@ -550,10 +552,10 @@ def nx_to_echarts_json(G, color_map, desc_dict,
         #     "url": url
         # })
     for edge in G.edges():
-        source_label = G.nodes[edge[0]].get("ident", edge[0])
+        source_label = edge[0] # use node id
         source_show = G.nodes[edge[0]].get("label", False)
         source_group = G.nodes[edge[0]].get("group", "other")
-        target_label = G.nodes[edge[1]].get("ident", edge[1])
+        target_label = edge[1] # use node id
         target_show = G.nodes[edge[1]].get("label", False)
         target_group = G.nodes[edge[1]].get("group", "other")
         links.append({
@@ -565,6 +567,7 @@ def nx_to_echarts_json(G, color_map, desc_dict,
             "source_group": source_group,
             "target_group": target_group,
         })
+        # print(links)
     categories = [{"name": cat, "itemStyle": {"color": color_map.get(cat, '#ccc')}} for cat in color_map]
     return json.dumps({"nodes": nodes, "links": links, "categories": categories}, ensure_ascii=False)
 
