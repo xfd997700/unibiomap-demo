@@ -298,6 +298,7 @@ def convert_subgraph_to_networkx(sub_g, id_map,
                                  remove_self_loop=True):
     # 筛选各类型中需要显示的节点
     displayed_nodes = {}
+    highlight_nodes = {}
     for ntype in sub_g.ntypes:
         num_nodes = sub_g.number_of_nodes(ntype)
         all_node_ids = list(range(num_nodes))
@@ -305,6 +306,7 @@ def convert_subgraph_to_networkx(sub_g, id_map,
         must_nodes = [nid for nid in all_node_ids 
                       if id_map.get(ntype, {}).get(nid, None) in must_show.get(ntype, [])]
         selected = set(must_nodes)
+        highlight_nodes[ntype] = must_nodes
         limit = display_limits.get(ntype, -1)
         # 如果有数量限制，则在必须显示的基础上补足其它节点，直到达到限制
         if limit != -1:
@@ -324,7 +326,7 @@ def convert_subgraph_to_networkx(sub_g, id_map,
         for nid in node_ids:
             node_label = id_map.get(ntype, {}).get(nid, f"{ntype}_{nid}")
             node_id = f"{ntype}_{nid}"
-            is_highlight = nid in must_nodes
+            is_highlight = nid in highlight_nodes[ntype]
             G.add_node(node_id, label=node_label, title=node_label, group=ntype, highlight=is_highlight)
 
     # 添加边：仅保留两端节点都在显示集合内的边
