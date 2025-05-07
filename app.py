@@ -97,7 +97,8 @@ def generate_iframe(sub_g, id_map_sub, must_show, display_limits):
     iframe_html = f"<iframe src='{data_uri}' width='100%' height='850px' style='border:none;'></iframe>"
     return iframe_html, html_code
 
-def run_query(protein, compound, disease, pathway, go, depth,
+def run_query(protein, compound, disease, pathway, go, phenotype,
+              depth,
             #   complex_mode, complex_limit,
               compound_mode, compound_limit,
               disease_mode, disease_limit,
@@ -112,7 +113,8 @@ def run_query(protein, compound, disease, pathway, go, depth,
         "compound": fetch_input_id(compound),
         "disease": fetch_input_id(disease),
         "pathway": fetch_input_id(pathway),
-        "go": fetch_input_id(go)
+        "go": fetch_input_id(go),
+        "phenotype": fetch_input_id(phenotype),
     }
     display_limits = {
         # 'complex': get_limit(complex_mode, complex_limit),
@@ -293,7 +295,8 @@ with gr.Blocks() as demo:
             disease_input = gr.Textbox(label="Disease ID")
             pathway_input = gr.Textbox(label="Pathway ID")
             go_input = gr.Textbox(label="GO ID")
-            inputs_1 = [protein_input, compound_input, disease_input, pathway_input, go_input]
+            phenotype_input = gr.Textbox(label="Phenotype ID")
+            inputs_1 = [protein_input, compound_input, disease_input, pathway_input, go_input, phenotype_input]
         with gr.Column():
             gr.Markdown("### Sample Limit")
             gr.Markdown("Setup the sampling restriction parameters below.")
