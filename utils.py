@@ -513,12 +513,14 @@ def fetch_desc_info(nid, ntype, desc_dict):
             "tooltip_name": nname + '<br>' + nid,
             "tooltip_desc": ndesc
         }
+
     elif ntype == 'compound':
+        # TODO: 同时检索P50416, P05091设置compound no limit会导致不显示，需要debug
         nname = cur_desc.get('name', nid)
         if nname is None: nname = cur_desc.get('inchikey', nid)
         ndesc = cur_desc.get('smiles', nid)
         img_url = fetch_compound_img(nid)
-        ndesc = f"{ndesc}<br><img src='{img_url}' style='max-width:200px; max-height:200px;'>"
+        ndesc = f"<img src='{img_url}' alt='Molecule Image' style='max-width:200px; max-height:200px;'><br>{ndesc}"
         node_desc = {
             "value": nid,
             "category": ntype,
