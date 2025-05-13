@@ -189,10 +189,10 @@ def subgraph_by_node(graph, sample_dict, node_map, depth=1,
     # ====================================================================================================
     # 构造双向图 （在外部 app.py 构造可能导致统计错误）
         # 构造双向图
-    graph = dgl.AddReverse(copy_edata=True, sym_new_etype=False)(graph)
+    graph_undirected = dgl.AddReverse(copy_edata=True, sym_new_etype=False)(graph)
         
     # 使用其中一个方向进行采样即可（已经是双向）
-    full_g, _ = dgl.khop_in_subgraph(graph, sample_dict, k=depth, relabel_nodes=True, store_ids=True)
+    full_g, _ = dgl.khop_in_subgraph(graph_undirected, sample_dict, k=depth, relabel_nodes=True, store_ids=True)
     # ====================================================================================================
 
     # 收集所有节点类型的原始 ID（合并去重）
