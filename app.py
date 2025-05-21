@@ -287,12 +287,7 @@ with gr.Blocks() as demo:
         with gr.Column():
             gr.Markdown("### Query Content")
             gr.Markdown("You can enter multiple entity IDs to query, separated by commas, for example: P50416, P05091.")
-            test_input = gr.Dropdown(
-                idname_dict["protein"],
-                # value=["swam", "slept"],
-                multiselect=True, label="Activity", interactive=True,
-                info="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed auctor, nisl eget ultricies aliquam, nunc nisl aliquet nunc, eget aliquam nisl nunc vel nisl."
-            )
+            
             protein_input = gr.Textbox("P05091", label="Protein ID")
             compound_input = gr.Textbox(label="Compound ID")
             disease_input = gr.Textbox(label="Disease ID")
