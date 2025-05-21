@@ -62,7 +62,7 @@ def load_or_process_graph():
     return graph, node_map, id_map
 
 graph, node_map, id_map = load_or_process_graph()
-desc_dict = load_desc(desc_path_dict)
+desc_dict, idname_dict = load_desc(desc_path_dict)
 
 def fetch_input_id(input_string):
     if not input_string:
@@ -287,6 +287,12 @@ with gr.Blocks() as demo:
         with gr.Column():
             gr.Markdown("### Query Content")
             gr.Markdown("You can enter multiple entity IDs to query, separated by commas, for example: P50416, P05091.")
+            test_input = gr.Dropdown(
+                idname_dict["protein"],
+                # value=["swam", "slept"],
+                multiselect=True, label="Activity", interactive=True,
+                info="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed auctor, nisl eget ultricies aliquam, nunc nisl aliquet nunc, eget aliquam nisl nunc vel nisl."
+            )
             protein_input = gr.Textbox("P05091", label="Protein ID")
             compound_input = gr.Textbox(label="Compound ID")
             disease_input = gr.Textbox(label="Disease ID")
@@ -345,4 +351,4 @@ with gr.Blocks() as demo:
         inputs=[subgraph_state, idmap_state],
         outputs=[download_file]
     )
-    demo.launch()
+    demo.launch(share=True)

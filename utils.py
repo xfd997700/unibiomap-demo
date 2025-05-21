@@ -35,7 +35,13 @@ def load_desc(desc_path_dict):
             cur_dict = json.load(f)
         desc_dict[key] = {sys.intern(k): v for k, v in cur_dict.items()}
     desc_dict['pathway'] = repair_smpdb_name(desc_dict['pathway'])
-    return desc_dict
+
+    idname_dict = {}
+    for key in ['pathway', 'disease', 'go', 'phenotype']:
+        idname_dict[key] = ['||'.join([k, v['name']]) for k, v in desc_dict[key].items()]
+    idname_dict['protein'] = ['||'.join([k, v['entry_name']]) for k, v in desc_dict['protein'].items()]
+    idname_dict['compound'] = ['||'.join([k, v['inchikey']]) for k, v in desc_dict['compound'].items()]
+    return desc_dict, idname_dict
 
 def nodemap2idmap(node_map):
     return {k: {vv: kk for kk, vv in v.items()} for k, v in node_map.items()}
